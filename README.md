@@ -67,8 +67,6 @@ This task transmits telemetry at 10 Hz. It uses the latest filtered sample and s
 
 This task checks whether the critical tasks are still alive. If the sensor, filter, and UART tasks all reported activity in the last monitor window, the task refreshes the watchdog. If not, the watchdog is allowed to reset the board.
 
-My note: this is the part that makes the project feel more realistic to me. The watchdog is not just refreshed blindly. It depends on the task heartbeat mask.
-
 ## Data flow
 
 ```text
@@ -112,7 +110,7 @@ More detail is in [`docs/telemetry_format.md`](docs/telemetry_format.md).
 
 ## CubeIDE / CubeMX setup
 
-Create or update a CubeIDE project for the NUCLEO-F401RE with:
+CubeIDE project for the NUCLEO-F401RE with:
 
 - USART2 asynchronous, 115200 baud, 8N1
 - I2C1 on PB8/PB9, 400 kHz
@@ -121,7 +119,7 @@ Create or update a CubeIDE project for the NUCLEO-F401RE with:
 - IWDG enabled, about 4 second timeout
 - PA5 configured as GPIO output for the onboard LED
 
-Important note to myself: TIM2 releases an RTOS semaphore from an interrupt, so the TIM2 interrupt priority must be compatible with FreeRTOS ISR API rules. I set TIM2 to priority `5` in `stm32f4xx_hal_msp.c`, assuming the common CubeMX FreeRTOS syscall priority setting of `5`.
+Important note: TIM2 releases an RTOS semaphore from an interrupt, so the TIM2 interrupt priority must be compatible with FreeRTOS ISR API rules. I set TIM2 to priority `5` in `stm32f4xx_hal_msp.c`, assuming the common CubeMX FreeRTOS syscall priority setting of `5`.
 
 ## File placement
 
@@ -164,9 +162,7 @@ The dashboard plots:
 - error/retry counters
 - task runtime measurements
 
-## Demo tests
-
-I would record the demo in this order:
+## Test cases
 
 1. Normal operation with both sensors connected.
 2. Disconnect BMP280 and show `V` change to `1`.
@@ -176,16 +172,6 @@ I would record the demo in this order:
 
 Full notes are in [`docs/demo_test_plan.md`](docs/demo_test_plan.md).
 
-## What this project shows on a resume
-
-- FreeRTOS task design on STM32
-- ISR-to-task synchronization using semaphores
-- Queue-based data pipeline
-- Mutex-protected I2C sensor access
-- Watchdog supervision based on task health
-- Fault-tolerant sensor disconnect handling
-- Runtime task timing measurements
-- UART telemetry and Python live plotting
 
 ## Personal build notes
 
