@@ -73,6 +73,7 @@ static void timing_init(void);
 static uint32_t timing_start(void);
 static uint32_t timing_elapsed_us(uint32_t start_cycles);
 static void mark_task_alive(uint32_t bit);
+static uint32_t snapshot_and_clear_task_heartbeat(void);
 static int32_t scale_i32(float value, float scale);
 
 /* =================== PUBLIC API =================== */
@@ -328,7 +329,7 @@ static void ErrorMonitorTask(void *argument)
         osDelay(250U);
         const uint32_t t0 = timing_start();
 
-        const uint32_t health = g_taskHeartbeat;
+        const uint32_t health = snapshot_and_clear_task_heartbeat();
         g_rtos.health_mask_last = health;
 
         const FSH_HwStatus_t *hw = FSH_HW_GetStatus();
@@ -350,7 +351,6 @@ static void ErrorMonitorTask(void *argument)
             HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
         }
 
-        g_taskHeartbeat = 0U;
         mark_task_alive(FSH_HEALTH_ERROR_TASK);
 
         g_rtos.error_monitor_us = timing_elapsed_us(t0);
@@ -419,6 +419,18 @@ static void mark_task_alive(uint32_t bit)
     taskENTER_CRITICAL();
     g_taskHeartbeat |= bit;
     taskEXIT_CRITICAL();
+}
+
+static uint32_t snapshot_and_clear_task_heartbeat(void)
+{
+    uint32_t snapshot;
+
+    taskENTER_CRITICAL();
+    snapshot = g_taskHeartbeat;
+    g_taskHeartbeat = 0U;
+    taskEXIT_CRITICAL();
+
+    return snapshot;
 }
 
 static int32_t scale_i32(float value, float scale)

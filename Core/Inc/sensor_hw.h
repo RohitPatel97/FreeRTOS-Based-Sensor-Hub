@@ -36,7 +36,8 @@ extern "C" {
 #define FSH_UART_TIMEOUT_MS      50U
 
 #define FSH_MPU6050_ADDR7        0x68U
-#define FSH_BMP280_ADDR7         0x76U  /* change to 0x77U if your module uses 0x77 */
+#define FSH_BMP280_ADDR7         0x76U  /* primary address; driver also probes 0x77 */
+#define FSH_BMP280_ADDR7_ALT     0x77U
 
 #define FSH_VALID_MPU6050        0x01U
 #define FSH_VALID_BMP280         0x02U

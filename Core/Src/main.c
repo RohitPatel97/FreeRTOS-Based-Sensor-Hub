@@ -163,7 +163,7 @@ static void MX_TIM2_Init(void)
 /* =================== IWDG =================== */
 static void MX_IWDG_Init(void)
 {
-  /* Approx timeout with 32 kHz LSI: 32k / 64 = 500 Hz, reload 2000 ≈ 4 sec. */
+  /* Approx timeout with 32 kHz LSI: 32k / 64 = 500 Hz, reload 2000 ~= 4 sec. */
   hiwdg.Instance = IWDG;
   hiwdg.Init.Prescaler = IWDG_PRESCALER_64;
   hiwdg.Init.Reload = 2000;
@@ -187,6 +187,8 @@ void Error_Handler(void)
   __disable_irq();
   while (1) {
     HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    HAL_Delay(100);
+    for (volatile uint32_t i = 0; i < 800000U; i++) {
+      __NOP();
+    }
   }
 }

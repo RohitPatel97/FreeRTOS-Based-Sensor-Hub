@@ -34,13 +34,13 @@ RD_us/FILT_us/UART_us visible
 2. Keep the MPU6050 connected.
 3. Show dashboard continuing to update.
 4. Point out that `V` changes from `3` to `1`.
-5. Point out `BMPF` and/or `RET` increasing.
+5. Point out `BMPF` and/or `RET` increasing on retry attempts.
 
 Expected result:
 
 ```text
 V:1
-BMPF increases
+BMPF increases on retry attempts
 Firmware keeps running
 Watchdog continues refreshing
 ```
@@ -51,13 +51,13 @@ Watchdog continues refreshing
 2. Disconnect MPU6050 VCC or SDA.
 3. Show telemetry continues.
 4. Point out that `V` changes from `3` to `2`.
-5. Point out `MPUF` and/or `RET` increasing.
+5. Point out `MPUF` and/or `RET` increasing on retry attempts.
 
 Expected result:
 
 ```text
 V:2
-MPUF increases
+MPUF increases on retry attempts
 No firmware lockup
 ```
 

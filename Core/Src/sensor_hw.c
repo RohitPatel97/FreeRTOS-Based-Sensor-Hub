@@ -21,6 +21,7 @@ typedef struct {
 static I2C_HandleTypeDef *g_i2c = NULL;
 static FSH_HwStatus_t g_hw = {0};
 static BMP280_Cal_t g_bmp = {0};
+static uint8_t g_bmp_addr7 = FSH_BMP280_ADDR7;
 
 static HAL_StatusTypeDef mpu_init(void);
 static uint8_t mpu_read(FSH_SensorSample_t *out);
@@ -42,6 +43,7 @@ HAL_StatusTypeDef FSH_HW_Init(I2C_HandleTypeDef *hi2c1)
     g_i2c = hi2c1;
     memset(&g_hw, 0, sizeof(g_hw));
     memset(&g_bmp, 0, sizeof(g_bmp));
+    g_bmp_addr7 = FSH_BMP280_ADDR7;
 
     g_hw.mpu_ready = (mpu_init() == HAL_OK) ? 1U : 0U;
     g_hw.bmp_ready = (bmp_init() == HAL_OK) ? 1U : 0U;
@@ -63,34 +65,42 @@ uint8_t FSH_HW_ReadSensors(FSH_SensorSample_t *out)
 
     uint8_t ok_mpu = 0U;
     uint8_t ok_bmp = 0U;
+    uint8_t attempted_mpu = 0U;
+    uint8_t attempted_bmp = 0U;
 
     if (g_hw.mpu_ready) {
+        attempted_mpu = 1U;
         ok_mpu = mpu_read(out);
     } else if (++mpu_reinit_ctr >= FSH_SAMPLE_RATE_HZ) {
         mpu_reinit_ctr = 0U;
+        attempted_mpu = 1U;
         g_hw.mpu_ready = (mpu_init() == HAL_OK) ? 1U : 0U;
         if (g_hw.mpu_ready) ok_mpu = mpu_read(out);
     }
 
     if (ok_mpu) {
+        mpu_reinit_ctr = 0U;
         out->valid_mask |= FSH_VALID_MPU6050;
-    } else {
+    } else if (attempted_mpu) {
         g_hw.mpu_ready = 0U;
         g_hw.comm_errors++;
         g_hw.mpu_failures++;
     }
 
     if (g_hw.bmp_ready) {
+        attempted_bmp = 1U;
         ok_bmp = bmp_read(out);
     } else if (++bmp_reinit_ctr >= FSH_SAMPLE_RATE_HZ) {
         bmp_reinit_ctr = 0U;
+        attempted_bmp = 1U;
         g_hw.bmp_ready = (bmp_init() == HAL_OK) ? 1U : 0U;
         if (g_hw.bmp_ready) ok_bmp = bmp_read(out);
     }
 
     if (ok_bmp) {
+        bmp_reinit_ctr = 0U;
         out->valid_mask |= FSH_VALID_BMP280;
-    } else {
+    } else if (attempted_bmp) {
         g_hw.bmp_ready = 0U;
         g_hw.comm_errors++;
         g_hw.bmp_failures++;
@@ -228,11 +238,18 @@ static uint8_t mpu_read(FSH_SensorSample_t *out)
 static HAL_StatusTypeDef bmp_init(void)
 {
     uint8_t id = 0U;
-    if (!i2c_read_retry(FSH_BMP280_ADDR7, 0xD0, &id, 1U)) return HAL_ERROR;
+    uint8_t addr = FSH_BMP280_ADDR7;
+
+    if (!i2c_read_retry(addr, 0xD0, &id, 1U)) {
+        addr = FSH_BMP280_ADDR7_ALT;
+        if (!i2c_read_retry(addr, 0xD0, &id, 1U)) return HAL_ERROR;
+    }
+
     if (id != 0x58U && id != 0x56U && id != 0x57U) return HAL_ERROR;
+    g_bmp_addr7 = addr;
 
     uint8_t c[24];
-    if (!i2c_read_retry(FSH_BMP280_ADDR7, 0x88, c, (uint16_t)sizeof(c))) return HAL_ERROR;
+    if (!i2c_read_retry(g_bmp_addr7, 0x88, c, (uint16_t)sizeof(c))) return HAL_ERROR;
 
     g_bmp.dig_T1 = (uint16_t)((uint16_t)c[1] << 8 | c[0]);
     g_bmp.dig_T2 = (int16_t)((uint16_t)c[3] << 8 | c[2]);
@@ -247,8 +264,9 @@ static HAL_StatusTypeDef bmp_init(void)
     g_bmp.dig_P8 = (int16_t)((uint16_t)c[21] << 8 | c[20]);
     g_bmp.dig_P9 = (int16_t)((uint16_t)c[23] << 8 | c[22]);
 
-    if (!i2c_write_retry(FSH_BMP280_ADDR7, 0xF4, 0x27)) return HAL_ERROR; /* x1 temp/press, normal */
-    if (!i2c_write_retry(FSH_BMP280_ADDR7, 0xF5, 0xA0)) return HAL_ERROR; /* standby 1000ms, filter x4 */
+    if (!i2c_write_retry(g_bmp_addr7, 0xF4, 0x00)) return HAL_ERROR; /* sleep while changing config */
+    if (!i2c_write_retry(g_bmp_addr7, 0xF5, 0x08)) return HAL_ERROR; /* standby 0.5ms, filter x4 */
+    if (!i2c_write_retry(g_bmp_addr7, 0xF4, 0x27)) return HAL_ERROR; /* x1 temp/press, normal */
 
     return HAL_OK;
 }
@@ -256,7 +274,7 @@ static HAL_StatusTypeDef bmp_init(void)
 static uint8_t bmp_read(FSH_SensorSample_t *out)
 {
     uint8_t b[6];
-    if (!i2c_read_retry(FSH_BMP280_ADDR7, 0xF7, b, (uint16_t)sizeof(b))) return 0U;
+    if (!i2c_read_retry(g_bmp_addr7, 0xF7, b, (uint16_t)sizeof(b))) return 0U;
 
     const int32_t adc_p = (int32_t)(((uint32_t)b[0] << 12) | ((uint32_t)b[1] << 4) | ((uint32_t)b[2] >> 4));
     const int32_t adc_t = (int32_t)(((uint32_t)b[3] << 12) | ((uint32_t)b[4] << 4) | ((uint32_t)b[5] >> 4));

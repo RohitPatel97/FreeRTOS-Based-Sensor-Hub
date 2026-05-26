@@ -24,6 +24,7 @@ The main goal for me was to practice RTOS design patterns: tasks, queues, semaph
 - IMU: MPU6050
 - Pressure/temperature: BMP280
 - I2C: I2C1 on PB8/PB9
+- BMP280 address: auto-probes `0x76`, then `0x77`
 - UART: USART2 through ST-LINK virtual COM port
 - Timer: TIM2 at 100 Hz
 - Watchdog: IWDG
