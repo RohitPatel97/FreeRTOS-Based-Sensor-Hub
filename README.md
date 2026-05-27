@@ -1,4 +1,4 @@
-# FreeRTOS-Based Sensor Hub
+#RTOS-Based Sensor Hub
 
 This is the next version of my STM32 sensor logger project. The first version proved that the NUCLEO-F401RE could sample an MPU6050 and BMP280, filter the accelerometer data, and stream UART telemetry. For this version, I wanted to make the design feel closer to a real embedded system by splitting the work into FreeRTOS tasks instead of keeping everything inside one foreground loop.
 
